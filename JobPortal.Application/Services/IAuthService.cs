@@ -1,0 +1,15 @@
+﻿using JobPortal.Application.DTOs.Auth;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace JobPortal.Application.Services
+{
+    public interface IAuthService
+    {
+        Task<AuthResponseDto> Register(RegisterDto dto);
+        Task<AuthResponseDto> Login(LoginDto dto);
+    }
+}
