@@ -34,5 +34,16 @@ namespace JobPortal.API.Controllers
             var result = await _jobService.SearchJobs(search, page, pageSize);
             return Ok(result);
         }
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetJob(int id)
+        {
+            var job = await _jobService.GetJobDetail(id);
+
+            if (job == null)
+                return NotFound();
+
+            return Ok(job);
+        }
     }
 }

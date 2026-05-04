@@ -1,6 +1,7 @@
 ﻿using JobPortal.Application.DTOs.Auth;
 using JobPortal.Application.Services;
 using JobPortal.Domain.Entities;
+using JobPortal.Domain.Enums;
 using JobPortal.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -30,7 +31,7 @@ public class AuthService : IAuthService
             Name = dto.Name,
             Email = dto.Email,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
-            Role = JobPortal.Domain.Enums.UserRole.Recruiter,
+            Role = UserRole.Recruiter,
             CreatedAt = DateTime.UtcNow,
             IsActive = true
         };

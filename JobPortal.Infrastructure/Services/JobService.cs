@@ -103,4 +103,20 @@ public class JobService : IJobService
             })
             .FirstOrDefaultAsync();
     }
+
+    public async Task<JobDetailDto?> GetJobDetail(int jobId)
+    {
+        return await _context.Jobs
+            .Where(j => j.Id == jobId && !j.IsDeleted)
+            .Select(j => new JobDetailDto
+            {
+                Id = j.Id,
+                Title = j.Title,
+                Description = j.Description,
+                Location = j.Location,
+                ExpiryDate = j.ExpiryDate,
+                Skills = j.JobSkills.Select(js => js.Skill.Name).ToList()
+            })
+            .FirstOrDefaultAsync();
+    }
 }
