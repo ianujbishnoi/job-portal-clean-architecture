@@ -119,4 +119,54 @@ public class JobService : IJobService
             })
             .FirstOrDefaultAsync();
     }
+
+    public async Task<List<JobMatchDto>> GetMatchedJobs(int userId, int page, int pageSize)
+    {
+        // 🔴 1. Get user skills
+        var userSkills = await _context.UserSkills
+            .Where(us => us.UserId == userId)
+            .Select(us => us.SkillId)
+            .ToListAsync();
+
+        if (!userSkills.Any())
+            return new List<JobMatchDto>();
+
+        // 🔴 2. Get jobs with skills
+        var jobs = await _context.Jobs
+            .Where(j => !j.IsDeleted)
+            .OrderByDescending(j => j.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(j => new
+            {
+                j.Id,
+                j.Title,
+                j.Location,
+                JobSkills = j.JobSkills.Select(js => js.SkillId).ToList(),
+                SkillNames = j.JobSkills.Select(js => js.Skill.Name).ToList()
+            })
+            .ToListAsync();
+
+        // 🔴 3. Calculate match
+        var result = jobs.Select(j =>
+        {
+            var matchCount = j.JobSkills.Intersect(userSkills).Count();
+            var total = j.JobSkills.Count;
+
+            int percentage = total == 0 ? 0 : (matchCount * 100) / total;
+
+            return new JobMatchDto
+            {
+                JobId = j.Id,
+                Title = j.Title,
+                Location = j.Location,
+                MatchPercentage = percentage,
+                Skills = j.SkillNames
+            };
+        })
+        .OrderByDescending(x => x.MatchPercentage) // 🔥 sort by best match
+        .ToList();
+
+        return result;
+    }
 }

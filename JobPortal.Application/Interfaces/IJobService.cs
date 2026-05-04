@@ -12,5 +12,6 @@ namespace JobPortal.Application.Interfaces
         Task CreateJob(CreateJobDto dto, int recruiterId);
         Task<List<JobResponseDto>> SearchJobs(string? search, int page, int pageSize);
         Task<JobDetailDto?> GetJobDetail(int jobId);
+        Task<List<JobMatchDto>> GetMatchedJobs(int userId, int page, int pageSize);
     }
 }

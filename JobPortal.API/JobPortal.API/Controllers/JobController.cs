@@ -45,5 +45,16 @@ namespace JobPortal.API.Controllers
 
             return Ok(job);
         }
+
+        [HttpGet("matched")]
+        [Authorize(Roles = "Candidate")]
+        public async Task<IActionResult> GetMatchedJobs(int page = 1, int pageSize = 10)
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+
+            var result = await _jobService.GetMatchedJobs(userId, page, pageSize);
+
+            return Ok(result);
+        }
     }
 }

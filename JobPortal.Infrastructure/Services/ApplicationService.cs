@@ -103,4 +103,38 @@ public class ApplicationService : IApplicationService
             })
             .ToListAsync();
     }
+
+    public async Task UpdateStatus(UpdateApplicationStatusDto dto, int recruiterId)
+    {
+        // 🔴 1. Get application with job
+        var application = await _context.Applications
+            .Include(a => a.Job)
+            .FirstOrDefaultAsync(a => a.Id == dto.ApplicationId);
+
+        if (application == null)
+            throw new Exception("Application not found");
+
+        // 🔴 2. Authorization check (VERY IMPORTANT)
+        if (application.Job.RecruiterId != recruiterId)
+            throw new Exception("Unauthorized");
+
+        // 🔴 3. Parse status safely
+        if (!Enum.TryParse<ApplicationStatus>(dto.Status, true, out var newStatus))
+            throw new Exception("Invalid status");
+
+        // 🔴 4. Update current status
+        application.CurrentStatus = newStatus;
+
+        // 🔴 5. Add history entry
+        var history = new ApplicationStatusHistory
+        {
+            ApplicationId = application.Id,
+            Status = newStatus,
+            ChangedAt = DateTime.UtcNow
+        };
+
+        _context.ApplicationStatusHistories.Add(history);
+
+        await _context.SaveChangesAsync();
+    }
 }

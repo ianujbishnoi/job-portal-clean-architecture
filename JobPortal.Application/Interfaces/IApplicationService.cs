@@ -12,5 +12,6 @@ namespace JobPortal.Application.Interfaces
         Task<ApplicationResponseDto> ApplyToJob(ApplyJobDto dto, int userId);
         Task<List<MyApplicationDto>> GetMyApplications(int userId);
         Task<List<ApplicantDto>> GetApplicants(int jobId, int recruiterId);
+        Task UpdateStatus(UpdateApplicationStatusDto dto, int recruiterId);
     }
 }
