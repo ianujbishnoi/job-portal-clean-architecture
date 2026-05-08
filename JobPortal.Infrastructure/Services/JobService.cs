@@ -9,10 +9,12 @@ namespace JobPortal.Infrastructure.Services;
 public class JobService : IJobService
 {
     private readonly ApplicationDbContext _context;
-
-    public JobService(ApplicationDbContext context)
+    private readonly ICacheService _cacheService;
+    const string versionKey = "jobs_cache_version";
+    public JobService(ApplicationDbContext context, ICacheService cacheService)
     {
         _context = context;
+        _cacheService = cacheService;
     }
 
     // 🔹 CREATE JOB (Recruiter only)
@@ -50,11 +52,23 @@ public class JobService : IJobService
             _context.JobSkills.AddRange(jobSkills);
             await _context.SaveChangesAsync();
         }
+
+        var version = await _cacheService.GetAsync<int>("jobs_cache_version");
+        await _cacheService.SetAsync("jobs_cache_version", version + 1, TimeSpan.FromDays(1));
     }
 
     // 🔹 SEARCH JOBS (with filters + pagination)
     public async Task<List<JobResponseDto>> SearchJobs(string? search, int page, int pageSize)
     {
+        var version = await _cacheService.GetAsync<int>(versionKey);
+        var cacheKey = $"jobs_v{version}_{search}_{page}_{pageSize}";
+
+        // 🔴 1. Try cache
+        var cached = await _cacheService.GetAsync<List<JobResponseDto>>(cacheKey);
+
+        if (cached != null)
+            return cached;
+
         // Defensive coding
         if (page <= 0) page = 1;
         if (pageSize <= 0 || pageSize > 50) pageSize = 10;
@@ -83,6 +97,8 @@ public class JobService : IJobService
                     .ToList()
             })
             .ToListAsync();
+
+        await _cacheService.SetAsync(cacheKey, jobs, TimeSpan.FromMinutes(5));
 
         return jobs;
     }

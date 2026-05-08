@@ -18,54 +18,64 @@ public class ApplicationService : IApplicationService
 
     public async Task<ApplicationResponseDto> ApplyToJob(ApplyJobDto dto, int userId)
     {
-        // 🔴 1. Validate Job Exists
-        var job = await _context.Jobs
-            .FirstOrDefaultAsync(j => j.Id == dto.JobId && !j.IsDeleted);
+        using var transaction = await _context.Database.BeginTransactionAsync();
 
-        if (job == null)
-            throw new Exception("Job not found");
-
-        // 🔴 2. Check Expiry
-        if (job.ExpiryDate < DateTime.UtcNow)
-            throw new Exception("Job has expired");
-
-        // 🔴 3. Prevent Duplicate Apply (Code-level check)
-        var alreadyApplied = await _context.Applications
-            .AnyAsync(a => a.UserId == userId && a.JobId == dto.JobId);
-
-        if (alreadyApplied)
-            throw new Exception("You have already applied to this job");
-
-        // 🔴 4. Create Application
-        var application = new JobApplication
+        try
         {
-            UserId = userId,
-            JobId = dto.JobId,
-            CurrentStatus = ApplicationStatus.Applied,
-            ResumeUrl = dto.ResumeUrl,
-            CreatedAt = DateTime.UtcNow
-        };
+            // 🔴 1. Validate Job Exists
+            var job = await _context.Jobs
+                .FirstOrDefaultAsync(j => j.Id == dto.JobId && !j.IsDeleted);
 
-        _context.Applications.Add(application);
-        await _context.SaveChangesAsync();
+            if (job == null)
+                throw new Exception("Job not found");
 
-        // 🔴 5. Add Status History
-        var history = new ApplicationStatusHistory
+            // 🔴 2. Check Expiry
+            if (job.ExpiryDate < DateTime.UtcNow)
+                throw new Exception("Job has expired");
+
+            // 🔴 3. Prevent Duplicate Apply (Code-level check)
+            var alreadyApplied = await _context.Applications
+                .AnyAsync(a => a.UserId == userId && a.JobId == dto.JobId);
+
+            if (alreadyApplied)
+                throw new Exception("You have already applied to this job");
+
+            // 🔴 4. Create Application
+            var application = new JobApplication
+            {
+                UserId = userId,
+                JobId = dto.JobId,
+                CurrentStatus = ApplicationStatus.Applied,
+                ResumeUrl = dto.ResumeUrl,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.Applications.Add(application);
+            await _context.SaveChangesAsync();
+
+            // 🔴 5. Add Status History
+            var history = new ApplicationStatusHistory
+            {
+                ApplicationId = application.Id,
+                Status = ApplicationStatus.Applied,
+                ChangedAt = DateTime.UtcNow
+            };
+
+            _context.ApplicationStatusHistories.Add(history);
+            await _context.SaveChangesAsync();
+
+            return new ApplicationResponseDto
+            {
+                ApplicationId = application.Id,
+                Status = application.CurrentStatus.ToString(),
+                AppliedAt = application.CreatedAt
+            };
+        }
+        catch
         {
-            ApplicationId = application.Id,
-            Status = ApplicationStatus.Applied,
-            ChangedAt = DateTime.UtcNow
-        };
-
-        _context.ApplicationStatusHistories.Add(history);
-        await _context.SaveChangesAsync();
-
-        return new ApplicationResponseDto
-        {
-            ApplicationId = application.Id,
-            Status = application.CurrentStatus.ToString(),
-            AppliedAt = application.CreatedAt
-        };
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 
     public async Task<List<MyApplicationDto>> GetMyApplications(int userId)
